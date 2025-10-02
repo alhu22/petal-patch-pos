@@ -13,6 +13,38 @@ const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Add user to admin_users table
+        const { error: adminError } = await supabase
+          .from("admin_users")
+          .insert({ id: authData.user.id, email });
+
+        if (adminError) throw adminError;
+
+        toast.success("Account created! You can now sign in.");
+        setIsSignUp(false);
+      }
+    } catch (error: any) {
+      console.error("Sign up error:", error);
+      toast.error(error.message || "Sign up failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,10 +87,10 @@ const AdminLogin = () => {
           <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <Lock className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Admin Login</CardTitle>
+          <CardTitle className="text-2xl">{isSignUp ? "Admin Sign Up" : "Admin Login"}</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-4">
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
@@ -84,11 +116,21 @@ const AdminLogin = () => {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? (isSignUp ? "Creating account..." : "Signing in...") : (isSignUp ? "Sign Up" : "Sign In")}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-4 text-center">
+            <Button
+              variant="link"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-sm"
+            >
+              {isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
+            </Button>
+          </div>
+
+          <div className="mt-2 text-center">
             <Button
               variant="link"
               onClick={() => navigate("/")}
